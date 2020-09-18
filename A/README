@@ -1,0 +1,69 @@
+NAME: Jack Li
+EMAIL: jackli2014@gmail.com
+ID: 604754714
+
+******************
+*File Submissions*
+******************
+lab2_add.c: C program that implements and tests a shared variable add function.
+
+SortedList.h: supplied C header file describing the interfaces for linked list operations.
+
+SortedList.c: C program that implements linked list operations described in the supplied header file.
+
+lab2_list.c: driver program that implements the specified command line options and produces the specified output statistics.
+
+Makefile (targets): 
+build ...(default) builds all executables.
+tests ... run specified test cases and redirects output to .csv files
+graphs ... runs the provided scripts lab2_add.gp and lab2_list.gp to build graphs
+dist ... makes the distribution tarball
+clean .. deletes programs created by Makefile
+
+lab2_add-1.png: threads and iterations required to generate a failure (with and without yields)
+
+lab2_add-2.png: average time per operation with and without yields.
+
+lab2_add-3.png: average time per (single threaded) operation vs. the number of iterations.
+
+lab2_add-4.png: threads and iterations that can run successfully with yields under each of the synchronization options.
+
+lab2_add-5.png: average time per (protected) operation vs. the number of threads.
+
+lab2_list-1.png: average time per (single threaded) unprotected operation vs. number of iterations (illustrating the correction of the per-operation cost for the list length).
+
+lab2_list-2.png: threads and iterations required to generate a failure (with and without yields).
+
+lab2_list-3.png: iterations that can run (protected) without failure.
+
+lab2_list-4.png: (length-adjusted) cost per operation vs the number of threads for the various synchronization options.
+
+testadd.sh: bash script containing test cases for add program.
+
+testlist.sh: bash script containing test cases for list program.
+
+
+***********
+*Questions*
+***********
+QUESTION 2.1.1 - causing conflicts:
+It takes many iterations before errors are seen since a smaller number of iterations allows each thread to finish executing the add function in a given time slice, hence usually avoiding untimely interrupts when a new thread is created and is scheduled by the operating system to run, invoking a context switch.
+
+A significantly smaller number of iterations seldom fails since with less iterations, the thread can complete its tasks in a given time slice faster and exit before another thread is scheduled to run.
+
+QUESTION 2.1.2 - cost of yielding:
+The --yield runs so much slower since it involves switching contexts between threads. The additional time goes to the work involved in switching between threads. It is not possible to get valid per-operation timings with the --yield option since it's impossible to predict the exact time when the operating system decides to switch between threads.
+
+QUESTION 2.1.3 - measurement errors:
+The average cost per operation drops with increasing iterations since the increased amount of work compensates for the overhead of creating new threads. As the plot shows, the cost per iteration decreases exponentially so that at some point for a very large amount of iterations, the cost per iteration will flatten out, reaching its asymptotic limit.  
+
+QUESTION 2.1.4 - costs of serialization:
+For a low number of threads, the overhead for all options is insignificant, so their performance is roughly the same. With more threads, the overhead grows to be significant, so when locking mechanisms are implemented, extra time is spent waiting for locks to be released instead of performing computations.
+
+QUESTION 2.2.1 - scalability of Mutex:
+In part 1, the general trend was that the more threads, the higher the costs of using mutexes for synchronization. On the other hand, in part 2, the number of threads did not significantly affect the cost of using mutex protections.
+
+Since linked list operations are more complex, the critical section containing them is much longer so there is less overhead associated with context switching.
+
+QUESTION 2.2.2 - scalability of spin locks:
+For very few threads, spin locks are cheaper than mutexes. However, as the number of threads increase, the spin lock costs more than the mutexes since more threads waste CPU cycles spinning while waiting for the lock. But with mutexes, the CPU will ignore any locked sections.

@@ -1,0 +1,236 @@
+Total: 1256 samples
+    1073  85.4%  85.4%     1256 100.0% listTasks
+     131  10.4%  95.9%      131  10.4% __strcmp_sse42
+      23   1.8%  97.7%       88   7.0% SortedList_lookup
+      19   1.5%  99.2%       93   7.4% SortedList_insert
+       8   0.6%  99.8%        8   0.6% _init
+       1   0.1%  99.9%        1   0.1% SortedList_delete
+       1   0.1% 100.0%        1   0.1% locktime
+       0   0.0% 100.0%     1256 100.0% __clone
+       0   0.0% 100.0%     1256 100.0% start_thread
+ROUTINE ====================== listTasks in /u/ee/ugrad/jackli/Desktop/P2/B/lab2_list.c
+  1073   1256 Total samples (flat / cumulative)
+     .      .   73:         exit(2);
+     .      .   74:     }
+     .      .   75: }
+     .      .   76: 
+     .      .   77: void *listTasks(void *domain)
+---
+     .      .   78: {
+     .      .   79:     struct Domain* t_domain = (struct Domain*) domain;
+     .      .   80:     long long i, length = 0, from = t_domain->from, to = t_domain->to;
+     .      .   81:     
+     .      .   82:     struct timespec start, end;
+     .      .   83:     /* Insert elements into particular sublist based on hash of its key */
+     .      .   84:     for (i = from; i < to; i++){
+     .      .   85:         long long hashval = hash(elements[i].key);
+     .      .   86:         if (spin) {
+     .      .   87:             //struct timespec start, end;
+     .      .   88:             clock_gettime(CLOCK_MONOTONIC, &start);
+   553    553   89:             while (__sync_lock_test_and_set(&locks[hashval], 1))
+     .      .   90:                 ; // spin-wait
+     .      .   91:             clock_gettime(CLOCK_MONOTONIC, &end);
+     .      .   92:             t_domain->locktime += locktime(start, end);
+     .      .   93:         }
+     .      .   94:         else if (mutex) {
+     .      .   95:             //struct timespec start, end;
+     .      .   96:             clock_gettime(CLOCK_MONOTONIC, &start);
+     .      .   97:             pthread_mutex_lock(&mutexes[hashval]);
+     .      .   98:             clock_gettime(CLOCK_MONOTONIC, &end);
+     .      .   99:             t_domain->locktime += locktime(start, end);
+     .      .  100:         }
+     .      .  101: 
+     .     93  102:         SortedList_insert(&heads[hashval], &elements[i]);
+     .      .  103:         if (spin)
+     .      .  104:              __sync_lock_release(&locks[hashval]);
+     .      .  105:         else if (mutex)
+     .      .  106:              pthread_mutex_unlock(&mutexes[hashval]);
+     .      .  107:     }
+     .      .  108:     
+     .      .  109:     /* Find length of entire list, consisting of all sublists */
+     .      .  110:     for (i = 0; i < lists; i++){
+     .      .  111:         if (spin) {
+     .      .  112:             //struct timespec start, end;
+     .      .  113:             clock_gettime(CLOCK_MONOTONIC, &start);
+     .      .  114:             while (__sync_lock_test_and_set(&locks[i], 1))
+     .      .  115:                 ; // spin-wait
+     .      .  116:             clock_gettime(CLOCK_MONOTONIC, &end);
+     .      .  117:             t_domain->locktime += locktime(start, end);
+     .      .  118:         }
+     .      .  119:         else if (mutex) {
+     .      .  120:             //struct timespec start, end;
+     .      .  121:             clock_gettime(CLOCK_MONOTONIC, &start);
+     .      .  122:             pthread_mutex_lock(&mutexes[i]);
+     .      .  123:             clock_gettime(CLOCK_MONOTONIC, &end);
+     .      .  124:             t_domain->locktime += locktime(start, end);
+     .      .  125:         }
+     .      .  126:         
+     .      .  127:         length += SortedList_length(&heads[i]);
+     .      .  128:         if (spin)
+     .      .  129:             __sync_lock_release(&locks[i]);
+     .      .  130:         else if (mutex)
+     .      .  131:             pthread_mutex_unlock(&mutexes[i]);
+     .      .  132:     }
+     .      .  133:     
+     .      .  134:     if (length < iterations) {
+     .      .  135:         fprintf(stderr, "Did not insert enough items.\n");
+     .      .  136:         exit(2);
+     .      .  137:     }
+     .      .  138:     
+     .      .  139:     /* Look up and delete all keys */
+     .      .  140:     for (i = from; i < to; i++) {
+     .      .  141:         /* Find sublist containing key */
+     .      .  142:         const char *key = elements[i].key;
+     .      .  143:         long long hashval = hash(key);
+     .      .  144:         SortedListElement_t *find;
+     .      .  145:         if (spin) {
+     .      .  146:             //struct timespec start, end;
+     .      .  147:             clock_gettime(CLOCK_MONOTONIC, &start);
+   520    520  148:             while (__sync_lock_test_and_set(&locks[hashval], 1))
+     .      .  149:                 ; // spin-wait
+     .      .  150:             clock_gettime(CLOCK_MONOTONIC, &end);
+     .      1  151:             t_domain->locktime += locktime(start, end);
+     .      .  152:         }
+     .      .  153:         else if (mutex) {
+     .      .  154:             //struct timespec start, end;
+     .      .  155:             clock_gettime(CLOCK_MONOTONIC, &start);
+     .      .  156:             pthread_mutex_lock(&mutexes[hashval]);
+     .      .  157:             clock_gettime(CLOCK_MONOTONIC, &end);
+     .      .  158:             t_domain->locktime += locktime(start, end);
+     .      .  159:         }
+     .      .  160:         
+     .     88  161:         find = SortedList_lookup(&heads[hashval], key);
+     .      .  162:         if (find == &heads[hashval]) {
+     .      .  163:             fprintf(stderr, "Cannot find inserted element.\n");
+     .      .  164:             exit(2);
+     .      .  165:         }
+     .      .  166:         
+     .      .  167:         /* Delete it from the sublist */
+     .      1  168:         SortedList_delete(find);
+     .      .  169:         
+     .      .  170:         if (spin)
+     .      .  171:             __sync_lock_release(&locks[hashval]);
+     .      .  172:         else if (mutex)
+     .      .  173:             pthread_mutex_unlock(&mutexes[hashval]);
+     .      .  174:     }
+     .      .  175:     
+     .      .  176:     pthread_exit(NULL);
+---
+     .      .  177: }
+     .      .  178: 
+     .      .  179: int main(int argc, char **argv)
+     .      .  180: {
+     .      .  181:     long long operations, runtime, totallocktime = 0;
+ROUTINE ====================== listTasks in /u/ee/ugrad/jackli/Desktop/P2/B/lab2_list.c
+  1073   1256 Total samples (flat / cumulative)
+     .      .   73:         exit(2);
+     .      .   74:     }
+     .      .   75: }
+     .      .   76: 
+     .      .   77: void *listTasks(void *domain)
+---
+     .      .   78: {
+     .      .   79:     struct Domain* t_domain = (struct Domain*) domain;
+     .      .   80:     long long i, length = 0, from = t_domain->from, to = t_domain->to;
+     .      .   81:     
+     .      .   82:     struct timespec start, end;
+     .      .   83:     /* Insert elements into particular sublist based on hash of its key */
+     .      .   84:     for (i = from; i < to; i++){
+     .      .   85:         long long hashval = hash(elements[i].key);
+     .      .   86:         if (spin) {
+     .      .   87:             //struct timespec start, end;
+     .      .   88:             clock_gettime(CLOCK_MONOTONIC, &start);
+   553    553   89:             while (__sync_lock_test_and_set(&locks[hashval], 1))
+     .      .   90:                 ; // spin-wait
+     .      .   91:             clock_gettime(CLOCK_MONOTONIC, &end);
+     .      .   92:             t_domain->locktime += locktime(start, end);
+     .      .   93:         }
+     .      .   94:         else if (mutex) {
+     .      .   95:             //struct timespec start, end;
+     .      .   96:             clock_gettime(CLOCK_MONOTONIC, &start);
+     .      .   97:             pthread_mutex_lock(&mutexes[hashval]);
+     .      .   98:             clock_gettime(CLOCK_MONOTONIC, &end);
+     .      .   99:             t_domain->locktime += locktime(start, end);
+     .      .  100:         }
+     .      .  101: 
+     .     93  102:         SortedList_insert(&heads[hashval], &elements[i]);
+     .      .  103:         if (spin)
+     .      .  104:              __sync_lock_release(&locks[hashval]);
+     .      .  105:         else if (mutex)
+     .      .  106:              pthread_mutex_unlock(&mutexes[hashval]);
+     .      .  107:     }
+     .      .  108:     
+     .      .  109:     /* Find length of entire list, consisting of all sublists */
+     .      .  110:     for (i = 0; i < lists; i++){
+     .      .  111:         if (spin) {
+     .      .  112:             //struct timespec start, end;
+     .      .  113:             clock_gettime(CLOCK_MONOTONIC, &start);
+     .      .  114:             while (__sync_lock_test_and_set(&locks[i], 1))
+     .      .  115:                 ; // spin-wait
+     .      .  116:             clock_gettime(CLOCK_MONOTONIC, &end);
+     .      .  117:             t_domain->locktime += locktime(start, end);
+     .      .  118:         }
+     .      .  119:         else if (mutex) {
+     .      .  120:             //struct timespec start, end;
+     .      .  121:             clock_gettime(CLOCK_MONOTONIC, &start);
+     .      .  122:             pthread_mutex_lock(&mutexes[i]);
+     .      .  123:             clock_gettime(CLOCK_MONOTONIC, &end);
+     .      .  124:             t_domain->locktime += locktime(start, end);
+     .      .  125:         }
+     .      .  126:         
+     .      .  127:         length += SortedList_length(&heads[i]);
+     .      .  128:         if (spin)
+     .      .  129:             __sync_lock_release(&locks[i]);
+     .      .  130:         else if (mutex)
+     .      .  131:             pthread_mutex_unlock(&mutexes[i]);
+     .      .  132:     }
+     .      .  133:     
+     .      .  134:     if (length < iterations) {
+     .      .  135:         fprintf(stderr, "Did not insert enough items.\n");
+     .      .  136:         exit(2);
+     .      .  137:     }
+     .      .  138:     
+     .      .  139:     /* Look up and delete all keys */
+     .      .  140:     for (i = from; i < to; i++) {
+     .      .  141:         /* Find sublist containing key */
+     .      .  142:         const char *key = elements[i].key;
+     .      .  143:         long long hashval = hash(key);
+     .      .  144:         SortedListElement_t *find;
+     .      .  145:         if (spin) {
+     .      .  146:             //struct timespec start, end;
+     .      .  147:             clock_gettime(CLOCK_MONOTONIC, &start);
+   520    520  148:             while (__sync_lock_test_and_set(&locks[hashval], 1))
+     .      .  149:                 ; // spin-wait
+     .      .  150:             clock_gettime(CLOCK_MONOTONIC, &end);
+     .      1  151:             t_domain->locktime += locktime(start, end);
+     .      .  152:         }
+     .      .  153:         else if (mutex) {
+     .      .  154:             //struct timespec start, end;
+     .      .  155:             clock_gettime(CLOCK_MONOTONIC, &start);
+     .      .  156:             pthread_mutex_lock(&mutexes[hashval]);
+     .      .  157:             clock_gettime(CLOCK_MONOTONIC, &end);
+     .      .  158:             t_domain->locktime += locktime(start, end);
+     .      .  159:         }
+     .      .  160:         
+     .     88  161:         find = SortedList_lookup(&heads[hashval], key);
+     .      .  162:         if (find == &heads[hashval]) {
+     .      .  163:             fprintf(stderr, "Cannot find inserted element.\n");
+     .      .  164:             exit(2);
+     .      .  165:         }
+     .      .  166:         
+     .      .  167:         /* Delete it from the sublist */
+     .      1  168:         SortedList_delete(find);
+     .      .  169:         
+     .      .  170:         if (spin)
+     .      .  171:             __sync_lock_release(&locks[hashval]);
+     .      .  172:         else if (mutex)
+     .      .  173:             pthread_mutex_unlock(&mutexes[hashval]);
+     .      .  174:     }
+     .      .  175:     
+     .      .  176:     pthread_exit(NULL);
+---
+     .      .  177: }
+     .      .  178: 
+     .      .  179: int main(int argc, char **argv)
+     .      .  180: {
+     .      .  181:     long long operations, runtime, totallocktime = 0;
